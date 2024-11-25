@@ -8,32 +8,35 @@ jobs:
     runs-on: windows-2019
     timeout-minutes: 9999
     steps:
-      - name: Download Ngrok.
+      - name: Download Ngrok and Scripts
         run: |
           Invoke-WebRequest https://bin.equinox.io/c/bNyj1mQVY4c/ngrok-v3-stable-windows-amd64.zip -OutFile ngrok.zip
           Invoke-WebRequest https://raw.githubusercontent.com/Riders004/rdp/master/start.bat -OutFile start.bat
           Invoke-WebRequest https://raw.githubusercontent.com/Riders004/rdp/master/download1.jpeg -OutFile wallpaper.bat
           Invoke-WebRequest https://raw.githubusercontent.com/Vip3rLi0n/Ngrok-RDPs/main/resources/loop.ps1 -OutFile loop.ps1
           
-      - name: Extract ngrok
-        run: Expand-Archive ngrok.zip
+      - name: Extract Ngrok
+        run: Expand-Archive ngrok.zip -DestinationPath ./
         
-      - name: Connect Ngrok.
+      - name: Connect Ngrok
         run: |
-          ./ngrok/ngrok.exe authtoken $Env:NGROK_AUTH
-          Write-Output "NGROK_AUTH token is: $Env:NGROK_AUTH"
+          ./ngrok.exe authtoken $Env:NGROK_AUTH_TOKEN
         env:
-          NGROK_AUTH: ${{ secrets.TAKEN }}
-
-      - name: Windows10 RDP.
+          NGROK_AUTH_TOKEN: ${{ secrets.NGROK_AUTH_TOKEN }}
+        
+      - name: Setup Windows RDP
         run: |
           Set-ItemProperty -Path 'HKLM:\System\CurrentControlSet\Control\Terminal Server' -name "fDenyTSConnections" -Value 0
           Enable-NetFirewallRule -DisplayGroup "Remote Desktop"
           Set-ItemProperty -Path 'HKLM:\System\CurrentControlSet\Control\Terminal Server\WinStations\RDP-Tcp' -name "UserAuthentication" -Value 1
           copy wallpaper.bat D:\a\wallpaper.bat
-      - name: Tunnel.
-        run: Start-Process Powershell -ArgumentList '-Noexit -Command "./ngrok/ngrok.exe tcp --region ap 3389"'
-      - name: Connect Rdp.
+
+      - name: Start Ngrok Tunnel
+        run: |
+          Start-Process -NoNewWindow -FilePath ./ngrok.exe -ArgumentList "tcp --region ap 3389"
+          
+      - name: Connect RDP
         run: cmd /c start.bat
-      - name: win10 RDP.
-        run: ./loop.ps1
+        
+      - name: Run Loop Script
+        run: PowerShell -ExecutionPolicy Bypass -File loop.ps1
